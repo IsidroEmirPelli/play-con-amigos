@@ -1,4 +1,6 @@
 #include <cstdio>
+#include <chrono>
+#include <future>
 #include <emscripten/bind.h>
 #include "Ps2VmJs.h"
 #include "GSH_OpenGLJs.h"
@@ -129,6 +131,31 @@ void bootDiscImage(std::string path)
 	g_virtualMachine->BootDiscImage(path);
 }
 
+// Non-blocking state operations let browser regression tests resume the same fight.
+// Waiting synchronously would prevent the main thread from servicing GL proxy calls.
+std::future<bool> g_stateOperation;
+
+bool saveState(std::string path)
+{
+	if(!g_virtualMachine || g_stateOperation.valid()) return false;
+	g_stateOperation = g_virtualMachine->SaveState(path);
+	return true;
+}
+
+bool loadState(std::string path)
+{
+	if(!g_virtualMachine || g_stateOperation.valid()) return false;
+	g_stateOperation = g_virtualMachine->LoadState(path);
+	return true;
+}
+
+int pollStateOperation()
+{
+	if(!g_stateOperation.valid()) return -2;
+	if(g_stateOperation.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return 0;
+	return g_stateOperation.get() ? 1 : -1;
+}
+
 int getFrames()
 {
 	return CStatsManager::GetInstance().GetFrames();
@@ -146,5 +173,8 @@ EMSCRIPTEN_BINDINGS(Play)
 	function("bootElf", &bootElf);
 	function("bootDiscImage", &bootDiscImage);
 	function("getFrames", &getFrames);
+	function("saveState", &saveState);
+	function("loadState", &loadState);
+	function("pollStateOperation", &pollStateOperation);
 	function("clearStats", &clearStats);
 }
