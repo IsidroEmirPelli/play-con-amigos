@@ -574,12 +574,12 @@ void CGSH_OpenGL::SetRenderingContext(uint64 primReg)
 	}
 
 	//--------------------------------------------------------
-	// Fast path: if everything (shader caps + relevant regs) matches, skip.
+	// Fast path: compare the full key. Alpha-fail/depth-fetch flags live above bit 31.
 	//--------------------------------------------------------
 	if(m_renderState.isValid)
 	{
 		if(m_renderState.isTextureStateValid && m_renderState.isFramebufferStateValid &&
-		   (static_cast<uint32>(m_renderState.shaderCaps) == static_cast<uint32>(shaderCaps)) &&
+		   (static_cast<ShaderCapsInt>(m_renderState.shaderCaps) == static_cast<ShaderCapsInt>(shaderCaps)) &&
 		   (m_renderState.primReg == primReg) &&
 		   (m_renderState.alphaReg == alphaReg) &&
 		   (m_renderState.testReg == testReg) &&
@@ -605,7 +605,7 @@ void CGSH_OpenGL::SetRenderingContext(uint64 primReg)
 	//--------------------------------------------------------
 	uint64 prevPrimValue = m_renderState.isValid ? m_renderState.primReg : 0;
 	auto prevPrim = make_convertible<PRMODE>(prevPrimValue);
-	bool shaderChanged = !m_renderState.isValid || (static_cast<uint32>(m_renderState.shaderCaps) != static_cast<uint32>(shaderCaps));
+	bool shaderChanged = !m_renderState.isValid || (static_cast<ShaderCapsInt>(m_renderState.shaderCaps) != static_cast<ShaderCapsInt>(shaderCaps));
 	bool primChanged = !m_renderState.isValid || (m_renderState.primReg != primReg);
 	bool blendEnableChanged = primChanged && !m_hasFramebufferFetchExtension && ((!m_renderState.isValid) || (prevPrim.nAlpha != prim.nAlpha));
 	bool alphaChanged = !m_renderState.isValid || (m_renderState.alphaReg != alphaReg);
