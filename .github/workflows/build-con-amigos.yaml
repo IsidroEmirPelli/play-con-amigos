@@ -1,0 +1,37 @@
+name: Con amigos WebAssembly
+on:
+  push:
+    branches: ['codex/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  wasm:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984
+        with:
+          version: 4.0.1
+      - name: Shader cache regression
+        run: python3 tests/test_opengl_shader_caps.py
+      - name: Configure
+        run: emcmake cmake -S . -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_PSFPLAYER=OFF -DUSE_QT=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      - name: Compile
+        run: cmake --build build-web --target Play --parallel 2
+      - name: Package source identity and hashes
+        run: |
+          mkdir -p artifact
+          cp build-web/Source/ui_js/Play.js build-web/Source/ui_js/Play.wasm artifact/
+          git rev-parse HEAD > artifact/SOURCE_REVISION
+          git submodule status --recursive > artifact/SUBMODULES
+          cd artifact
+          sha256sum Play.js Play.wasm > SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: play-con-amigos-wasm
+          path: artifact/
+          retention-days: 14
